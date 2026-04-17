@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Descubre tu perfil astrológico</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ===========================
+       VARIABLES Y RESET
+    =========================== */
+    :root {
+      --bg:        #0a0812;
+      --bg2:       #100d1c;
+      --surface:   #17132a;
+      --border:    rgba(180,140,255,0.18);
+      --gold:      #e8c97a;
+      --gold2:     #f5e0a0;
+      --purple:    #9b72f5;
+      --purple2:   #c4a8ff;
+      --accent:    #ff7eb3;
+      --text:      #ede8ff;
+      --muted:     #8a82a8;
+      --radius:    16px;
+      --transition: 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Lato', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Fondo estrellado */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 10%, rgba(155,114,245,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 90%, rgba(232,201,122,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 60% 40%, rgba(255,126,179,0.06) 0%, transparent 40%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ===========================
+       ESTRELLAS ANIMADAS
+    =========================== */
+    .stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: white;
+      animation: twinkle var(--dur, 3s) ease-in-out infinite var(--delay, 0s);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.1; transform: scale(1); }
+      50%       { opacity: 0.9; transform: scale(1.4); }
+    }
+
+    /* ===========================
+       CONTENEDOR PRINCIPAL
+    =========================== */
+    #app {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2rem 1.2rem 4rem;
+    }
+
+    /* ===========================
+       PANTALLAS
+    =========================== */
+    .screen {
+      display: none;
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity var(--transition), transform var(--transition);
+    }
+    .screen.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ===========================
+       TIPOGRAFÍA
+    =========================== */
+    h1, h2, h3 {
+      font-family: 'Cinzel', serif;
+      letter-spacing: 0.04em;
+    }
+    h1 {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--purple2) 60%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+      margin-bottom: 0.4rem;
+    }
+    h2 {
+      font-size: clamp(1.2rem, 3vw, 1.7rem);
+      color: var(--gold);
+      margin-bottom: 1rem;
+    }
+    h3 {
+      font-size: 1rem;
+      color: var(--purple2);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 0.5rem;
+    }
+    p { line-height: 1.7; color: var(--text); }
+    .muted { color: var(--muted); font-size: 0.88rem; }
+
+    /* ===========================
+       SEPARADOR ORNAMENTAL
+    =========================== */
+    .ornament {
+      text-align: center;
+      color: var(--gold);
+      font-size: 1.3rem;
+      letter-spacing: 0.5rem;
+      margin: 1.5rem 0;
+      opacity: 0.7;
+    }
+
+    /* ===========================
+       CARD
+    =========================== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(155,114,245,0.06);
+    }
+
+    /* ===========================
+       FORMULARIO PANTALLA 1
+    =========================== */
+    .header-intro {
+      text-align: center;
+      padding: 2.5rem 0 1rem;
+    }
+    .header-intro .subtitle {
+      font-size: 1rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--purple2);
+      margin-bottom: 0.4rem;
+      margin-top: 1.2rem;
+    }
+    input[type="text"],
+    input[type="date"] {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-family: 'Lato', sans-serif;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.7);
+      cursor: pointer;
+    }
+    input:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(155,114,245,0.15);
+    }
+    .error-msg {
+      color: var(--accent);
+      font-size: 0.82rem;
+      margin-top: 0.4rem;
+      display: none;
+    }
+
+    /* ===========================
+       BOTONES
+    =========================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, var(--purple) 0%, #7c4fd4 100%);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 0.85rem 2.2rem;
+      font-family: 'Cinzel', serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      box-shadow: 0 4px 24px rgba(155,114,245,0.35);
+      margin-top: 1.8rem;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(155,114,245,0.5);
+    }
+    .btn:active { transform: translateY(0); }
+    .btn-gold {
+      background: linear-gradient(135deg, #c9a440 0%, var(--gold) 100%);
+      box-shadow: 0 4px 24px rgba(232,201,122,0.3);
+    }
+    .btn-gold:hover { box-shadow: 0 8px 32px rgba(232,201,122,0.5); }
+    .btn-center { text-align: center; }
+
+    /* ===========================
+       SIGNOS GRID
+    =========================== */
+    .signs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    .sign-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem 1rem;
+      text-align: center;
+      transition: transform 0.3s, border-color 0.3s;
+      animation: fadeUp 0.5s ease both;
+    }
+    .sign-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--purple);
+    }
+    .sign-card .sign-img-wrap {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(155,114,245,0.2), rgba(232,201,122,0.1));
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 0.8rem;
+      font-size: 2.2rem;
+      overflow: hidden;
+    }
+    .sign-card .sign-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    .sign-card .system-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+    }
+    .sign-card .sign-name {
+      font-family: 'Cinzel', serif;
+      font-size: 1rem;
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .sign-card .sign-detail {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ===========================
+       HORÓSCOPO
+    =========================== */
+    .horoscope-box {
+      background: linear-gradient(145deg, rgba(155,114,245,0.08), rgba(232,201,122,0.06));
+      border: 1px solid rgba(232,201,122,0.25);
+      border-radius: var(--radius);
+      padding: 2rem;
+      font-size: 1.02rem;
+      line-height: 1.85;
+      color: var(--text);
+      position: relative;
+      overflow: hidden;
+    }
+    .horoscope-box::before {
+      content: '✦';
+      position: absolute;
+      top: -10px;
+      right: 20px;
+      font-size: 5rem;
+      opacity: 0.04;
+      color: var(--gold);
+    }
+    .horoscope-box p { margin-bottom: 0.8rem; }
+    .horoscope-box p:last-child { margin-bottom: 0; }
+    .horoscope-name {
+      font-family: 'Cinzel', serif;
+      color: var(--gold);
+      font-size: 1.1rem;
+    }
+
+    /* ===========================
+       SLIDERS
+    =========================== */
+    .slider-group {
+      margin-bottom: 1.6rem;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .slider-label {
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    .slider-value {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      color: var(--gold);
+      font-weight: 600;
+      min-width: 28px;
+      text-align: right;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.08);
+      outline: none;
+      transition: background 0.3s;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple), var(--gold));
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(155,114,245,0.5);
+      transition: transform 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    /* ===========================
+       RADAR CHART
+    =========================== */
+    .chart-wrap {
+      max-width: 420px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* ===========================
+       REVELACIÓN FINAL
+    =========================== */
+    .revelation-box {
+      background: linear-gradient(145deg, rgba(255,126,179,0.08), rgba(155,114,245,0.1));
+      border: 2px solid rgba(255,126,179,0.3);
+      border-radius: var(--radius);
+      padding: 2rem;
+      text-align: center;
+      animation: pulseGlow 3s ease-in-out infinite;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(255,126,179,0.1); }
+      50%       { box-shadow: 0 0 40px rgba(255,126,179,0.25); }
+    }
+    .revelation-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    .revelation-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.4rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+    .revelation-text {
+      font-size: 1rem;
+      line-height: 1.8;
+      color: var(--text);
+    }
+    .revelation-text strong { color: var(--gold); }
+
+    /* ===========================
+       BADGE EFECTO FORER
+    =========================== */
+    .forer-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      color: white;
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      padding: 0.3rem 0.9rem;
+      border-radius: 99px;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ===========================
+       FUENTE / FOOTER INFO
+    =========================== */
+    .info-block {
+      background: rgba(255,255,255,0.02);
+      border-left: 3px solid var(--purple);
+      border-radius: 0 10px 10px 0;
+      padding: 1rem 1.2rem;
+      margin-top: 1.5rem;
+    }
+    .info-block p { font-size: 0.88rem; color: var(--muted); }
+    .info-block strong { color: var(--purple2); }
+
+    /* ===========================
+       LOADER
+    =========================== */
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      transition: opacity 0.6s;
+    }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+    .loader-symbol {
+      font-size: 3rem;
+      animation: spin 2s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text {
+      font-family: 'Cinzel', serif;
+      font-size: 0.9rem;
+      color: var(--muted);
+      letter-spacing: 0.2em;
+    }
+
+    /* ===========================
+       RESPONSIVE
+    =========================== */
+    @media (max-width: 500px) {
+      .card { padding: 1.3rem; }
+      .signs-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ===========================
+       FOOTER AUTORÍA
+    =========================== */
+    .autoria-footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 2.5rem 1rem 3rem;
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
+    }
+    .autoria-footer .autoria-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+    .autoria-footer .autoria-nombre {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--purple2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.06em;
+    }
+    .autoria-footer .autoria-deco {
+      color: var(--gold);
+      opacity: 0.5;
+      font-size: 1rem;
+      letter-spacing: 0.4rem;
+      margin-top: 0.6rem;
+    }
+
+    /* ===========================
+       ANIMACIÓN ENTRADA CARDS
+    =========================== */
+    .anim-delay-1 { animation-delay: 0.05s; }
+    .anim-delay-2 { animation-delay: 0.15s; }
+    .anim-delay-3 { animation-delay: 0.25s; }
+    .anim-delay-4 { animation-delay: 0.35s; }
+
+    /* progress bar para sliders */
+    .slider-track {
+      position: relative;
+      height: 6px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.08);
+      margin-top: 4px;
+    }
+    .slider-track input[type="range"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      margin: 0;
+      background: transparent;
+    }
+    .slider-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--purple), var(--gold));
+      pointer-events: none;
+      transition: width 0.15s;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loader de transición -->
+<div id="loader">
+  <div class="loader-symbol">✦</div>
+  <div class="loader-text">Consultando los astros…</div>
+</div>
+
+<!-- Fondo de estrellas -->
+<div class="stars" id="stars"></div>
+
+<div id="app">
+
+  <!-- ══════════════════════════════
+       PANTALLA 1 — FORMULARIO
+  ══════════════════════════════ -->
+  <div class="screen active" id="screen-form">
+    <div class="header-intro">
+      <h1>✦ Descubre tu perfil astrológico</h1>
+      <p class="subtitle">Cuatro sistemas ancestrales revelarán quién eres en verdad</p>
+    </div>
+
+    <div class="card">
+      <label for="inp-nombre">Tu nombre (opcional)</label>
+      <input type="text" id="inp-nombre" placeholder="¿Cómo te llamas?" autocomplete="off" />
+
+      <label for="inp-fecha">Fecha de nacimiento <span style="color:var(--accent)">*</span></label>
+      <input type="date" id="inp-fecha" />
+      <p class="error-msg" id="error-fecha">Por favor ingresa tu fecha de nacimiento.</p>
+
+      <div class="btn-center">
+        <button class="btn" id="btn-generar">✦ Generar mi perfil</button>
+      </div>
+    </div>
+
+    <p class="muted" style="text-align:center;margin-top:0.8rem">
+      Este es un experimento educativo sobre psicología cognitiva.
+    </p>
+  </div>
+
+  <!-- ══════════════════════════════
+       PANTALLA 2 — SIGNOS + HORÓSCOPO
+  ══════════════════════════════ -->
+  <div class="screen" id="screen-result">
+    <div style="text-align:center;padding:2rem 0 0.5rem">
+      <div class="forer-badge">✦ Perfil cósmico personal</div>
+      <h1 id="res-titulo">Tu perfil, <span id="res-nombre"></span></h1>
+      <p class="muted">Basado en tu fecha de nacimiento: <span id="res-fecha"></span></p>
+    </div>
+
+    <div class="ornament">· · · ✦ · · ·</div>
+
+    <h2>Los cuatro sistemas</h2>
+    <div class="signs-grid" id="signs-grid">
+      <!-- generado por JS -->
+    </div>
+
+    <div class="ornament">· · · ✦ · · ·</div>
+
+    <h2>Tu horóscopo personal</h2>
+    <div class="horoscope-box" id="horoscope-box">
+      <!-- generado por JS -->
+    </div>
+
+    <div class="btn-center">
+      <button class="btn btn-gold" id="btn-evaluar">¿Qué tan preciso fue? →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       PANTALLA 3 — EVALUACIÓN SLIDERS
+  ══════════════════════════════ -->
+  <div class="screen" id="screen-eval">
+    <div style="text-align:center;padding:2rem 0 0.5rem">
+      <h1>Evalúa tu perfil</h1>
+      <p class="muted" style="margin-top:0.5rem">Sé honesto/a: ¿cuánto se ajusta a ti?</p>
+    </div>
+
+    <div class="card" id="sliders-container">
+      <!-- generado por JS -->
+    </div>
+
+    <div class="btn-center">
+      <button class="btn" id="btn-ver-resultado">Ver mis resultados ✦</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       PANTALLA 4 — GRÁFICA + REVELACIÓN
+  ══════════════════════════════ -->
+  <div class="screen" id="screen-grafica">
+    <div style="text-align:center;padding:2rem 0 0.5rem">
+      <h1>Tus resultados</h1>
+      <p class="muted" style="margin-top:0.5rem">Así evaluaste tu perfil astrológico</p>
+    </div>
+
+    <div class="card">
+      <div class="chart-wrap">
+        <canvas id="radar-chart"></canvas>
+      </div>
+      <p id="grafica-promedio" style="text-align:center;margin-top:1rem;color:var(--gold);font-family:'Cinzel',serif;font-size:1.1rem"></p>
+    </div>
+
+    <div class="ornament">· · · ✦ · · ·</div>
+
+    <!-- REVELACIÓN -->
+    <div class="revelation-box">
+      <div class="revelation-icon">🔮</div>
+      <div class="revelation-title">El secreto detrás de tu perfil</div>
+      <p class="revelation-text">
+        <strong>Toda la descripción que recibiste es exactamente idéntica para todos los usuarios.</strong><br><br>
+        No importó tu nombre, tu fecha de nacimiento ni tu signo: cada persona que usa esta herramienta recibe
+        <strong>el mismo texto de horóscopo</strong>, palabra por palabra.<br><br>
+        Esto demuestra el <strong>Efecto Forer</strong> (también llamado <em>efecto Barnum</em>): la tendencia humana
+        a aceptar descripciones vagas, positivas y ambiguas como si fueran una caracterización altamente
+        <em>personal y precisa</em> de uno mismo.<br><br>
+        Bertram Forer lo descubrió en 1948 cuando dio a sus estudiantes un «test de personalidad» y
+        luego entregó a todos <em>el mismo texto</em>. La puntuación media de «exactitud» fue de <strong>4.3 sobre 5</strong>.
+      </p>
+    </div>
+
+    <div class="info-block">
+      <p><strong>¿Por qué funciona?</strong><br>
+      Nuestro cerebro busca patrones y significados. Cuando un texto es ambiguo y positivo,
+      rellenamos los huecos con nuestra propia experiencia, confirmando sesgos preexistentes
+      (<em>sesgo de confirmación</em>). El horóscopo, los tests de personalidad virales y las
+      lecturas de tarot explotan este mismo mecanismo cognitivo.</p>
+    </div>
+
+    <div class="btn-center" style="margin-top:2rem">
+      <button class="btn" id="btn-reiniciar">↩ Hacer otra prueba</button>
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<script>
+/* ============================================================
+   DATOS DE SIGNOS
+============================================================ */
+
+// --- Zodiaco occidental ---
+const ZODIACO_OCCIDENTAL = [
+  { nombre: 'Capricornio', emoji: '♑', rango: [[12,22],[1,19]],  imagen: 'imagenes/zodiaco/capricornio.png' },
+  { nombre: 'Acuario',     emoji: '♒', rango: [[1,20],[2,18]],   imagen: 'imagenes/zodiaco/acuario.png' },
+  { nombre: 'Piscis',      emoji: '♓', rango: [[2,19],[3,20]],   imagen: 'imagenes/zodiaco/piscis.png' },
+  { nombre: 'Aries',       emoji: '♈', rango: [[3,21],[4,19]],   imagen: 'imagenes/zodiaco/aries.png' },
+  { nombre: 'Tauro',       emoji: '♉', rango: [[4,20],[5,20]],   imagen: 'imagenes/zodiaco/tauro.png' },
+  { nombre: 'Géminis',     emoji: '♊', rango: [[5,21],[6,20]],   imagen: 'imagenes/zodiaco/geminis.png' },
+  { nombre: 'Cáncer',      emoji: '♋', rango: [[6,21],[7,22]],   imagen: 'imagenes/zodiaco/cancer.png' },
+  { nombre: 'Leo',         emoji: '♌', rango: [[7,23],[8,22]],   imagen: 'imagenes/zodiaco/leo.png' },
+  { nombre: 'Virgo',       emoji: '♍', rango: [[8,23],[9,22]],   imagen: 'imagenes/zodiaco/virgo.png' },
+  { nombre: 'Libra',       emoji: '♎', rango: [[9,23],[10,22]],  imagen: 'imagenes/zodiaco/libra.png' },
+  { nombre: 'Escorpio',    emoji: '♏', rango: [[10,23],[11,21]], imagen: 'imagenes/zodiaco/escorpio.png' },
+  { nombre: 'Sagitario',   emoji: '♐', rango: [[11,22],[12,21]], imagen: 'imagenes/zodiaco/sagitario.png' },
+];
+
+// --- Horóscopo chino (por año) ---
+const CHINO = ['Rata','Buey','Tigre','Conejo','Dragón','Serpiente','Caballo','Cabra','Mono','Gallo','Perro','Cerdo'];
+const CHINO_EMOJI = ['🐭','🐮','🐯','🐰','🐲','🐍','🐴','🐑','🐵','🐓','🐶','🐷'];
+
+// --- Signos celtas (árboles del calendario ogham, simplificado) ---
+const CELTA = [
+  { nombre: 'Abedul',    emoji: '🌿', desde: [12,24], hasta: [1,20]  },
+  { nombre: 'Serbal',    emoji: '🍃', desde: [1,21],  hasta: [2,17]  },
+  { nombre: 'Fresno',    emoji: '🌱', desde: [2,18],  hasta: [3,17]  },
+  { nombre: 'Aliso',     emoji: '🌾', desde: [3,18],  hasta: [4,14]  },
+  { nombre: 'Sauce',     emoji: '🌳', desde: [4,15],  hasta: [5,12]  },
+  { nombre: 'Espino',    emoji: '🌸', desde: [5,13],  hasta: [6,9]   },
+  { nombre: 'Roble',     emoji: '🌲', desde: [6,10],  hasta: [7,7]   },
+  { nombre: 'Acebo',     emoji: '🍀', desde: [7,8],   hasta: [8,4]   },
+  { nombre: 'Avellano',  emoji: '🌰', desde: [8,5],   hasta: [9,1]   },
+  { nombre: 'Vid',       emoji: '🍇', desde: [9,2],   hasta: [9,29]  },
+  { nombre: 'Hiedra',    emoji: '🍂', desde: [9,30],  hasta: [10,27] },
+  { nombre: 'Junco',     emoji: '🌿', desde: [10,28], hasta: [11,24] },
+  { nombre: 'Saúco',     emoji: '🍁', desde: [11,25], hasta: [12,23] },
+];
+
+// --- Signos mayas (20 nahuales, aproximado por día del año) ---
+const MAYA = [
+  { nombre: 'Imix',   emoji: '🌊', desc: 'Cocodrilo' },
+  { nombre: 'Ik',     emoji: '💨', desc: 'Viento' },
+  { nombre: 'Akbal',  emoji: '🌙', desc: 'Noche' },
+  { nombre: 'Kan',    emoji: '🌽', desc: 'Semilla' },
+  { nombre: 'Chikchan', emoji:'🐍', desc: 'Serpiente' },
+  { nombre: 'Kimi',   emoji: '💀', desc: 'Muerte' },
+  { nombre: 'Manik',  emoji: '🦌', desc: 'Venado' },
+  { nombre: 'Lamat',  emoji: '⭐', desc: 'Conejo' },
+  { nombre: 'Muluk',  emoji: '🐬', desc: 'Agua' },
+  { nombre: 'Ok',     emoji: '🐕', desc: 'Perro' },
+  { nombre: 'Chuwen', emoji: '🐒', desc: 'Mono' },
+  { nombre: 'Eb',     emoji: '🛤️', desc: 'Camino' },
+  { nombre: 'Ben',    emoji: '🌾', desc: 'Caña' },
+  { nombre: 'Ix',     emoji: '🐆', desc: 'Jaguar' },
+  { nombre: 'Men',    emoji: '🦅', desc: 'Águila' },
+  { nombre: 'Kib',    emoji: '🦉', desc: 'Buitre' },
+  { nombre: 'Kaban',  emoji: '🌍', desc: 'Tierra' },
+  { nombre: 'Etznab', emoji: '🔪', desc: 'Pedernal' },
+  { nombre: 'Kawak',  emoji: '⛈️', desc: 'Tormenta' },
+  { nombre: 'Ajaw',   emoji: '☀️', desc: 'Señor Sol' },
+];
+
+/* ============================================================
+   CÁLCULO DE SIGNOS
+============================================================ */
+
+/**
+ * Calcular signo del zodiaco occidental
+ * @param {number} mes  1-12
+ * @param {number} dia  1-31
+ */
+function calcZodiacoOccidental(mes, dia) {
+  for (const signo of ZODIACO_OCCIDENTAL) {
+    const [desde, hasta] = signo.rango;
+    // Capricornio cruza el año
+    if (signo.nombre === 'Capricornio') {
+      if ((mes === 12 && dia >= 22) || (mes === 1 && dia <= 19)) return signo;
+    } else {
+      if ((mes === desde[0] && dia >= desde[1]) || (mes === hasta[0] && dia <= hasta[1])) return signo;
+    }
+  }
+  return ZODIACO_OCCIDENTAL[0];
+}
+
+/**
+ * Calcular signo chino por año
+ * @param {number} anio
+ */
+function calcZodiacoChino(anio) {
+  const idx = ((anio - 1900) % 12 + 12) % 12;
+  return { nombre: CHINO[idx], emoji: CHINO_EMOJI[idx], imagen: `imagenes/chino/${CHINO[idx].toLowerCase()}.png` };
+}
+
+/**
+ * Calcular signo celta por mes/día
+ */
+function calcZodiacoCelta(mes, dia) {
+  for (const s of CELTA) {
+    const [dm, dd] = s.desde;
+    const [hm, hd] = s.hasta;
+    // si mismo mes
+    if (dm === hm) {
+      if (mes === dm && dia >= dd && dia <= hd) return s;
+    } else if (dm < hm) {
+      if ((mes === dm && dia >= dd) || (mes === hm && dia <= hd)) return s;
+      if (mes > dm && mes < hm) return s;
+    } else {
+      // cruza año (Abedul: dic-ene)
+      if ((mes === dm && dia >= dd) || (mes === hm && dia <= hd)) return s;
+    }
+  }
+  return CELTA[12]; // Saúco por defecto
+}
+
+/**
+ * Calcular signo maya por día del año
+ */
+function calcZodiacoMaya(fecha) {
+  const inicio = new Date(fecha.getFullYear(), 0, 1);
+  const diff = Math.floor((fecha - inicio) / (1000*60*60*24));
+  const idx = diff % 20;
+  return MAYA[idx];
+}
+
+/* ============================================================
+   TEXTO FORER (idéntico para todos)
+============================================================ */
+function generarHoroscopo(nombre, signos) {
+  const saludo = nombre ? `<span class="horoscope-name">${nombre}</span>, los` : 'Los';
+  return `
+    <p>${saludo} astros han trazado para ti un mapa único de energías y posibilidades.
+    Eres una persona que, en el fondo, tiene una gran necesidad de ser apreciada y admirada por los demás,
+    y sin embargo también valoras profundamente tu independencia. A veces te sientes extrovertido/a y
+    sociable; otras, introvertido/a y reservado/a.</p>
+
+    <p>Tienes capacidad para adaptarte a diversas situaciones, aunque en ocasiones te preguntas si estás
+    tomando las decisiones correctas. Tu intuición suele ser acertada, pero reconoces que no siempre
+    confías en ella tanto como deberías. Hay aspectos de tu personalidad que incluso las personas más
+    cercanas a ti desconocen.</p>
+
+    <p>Te consideras una persona con principios, aunque no siempre resulta sencillo mantenerlos ante la
+    presión social. Has cometido errores en el pasado y los has usado como aprendizaje, lo que demuestra
+    una madurez poco común. Tu mayor fortaleza es también, en ocasiones, tu mayor debilidad.</p>
+
+    <p>Este período astral te invita a explorar nuevas áreas de tu vida que has descuidado. Las
+    oportunidades que buscas están más cerca de lo que imaginas; solo necesitas abrirte a verlas.
+    Alguien de tu entorno cercano jugará un papel importante en los próximos meses.</p>
+
+    <p>En el amor y las relaciones, das mucho de ti mismo/a, aunque no siempre recibes lo mismo a
+    cambio. En el trabajo, tu capacidad analítica es uno de tus grandes activos, aunque a veces
+    subestimas tus propios logros. La clave este año es equilibrar tu vida interior con tus
+    compromisos externos.</p>
+  `;
+}
+
+/* ============================================================
+   SLIDERS DE EVALUACIÓN
+============================================================ */
+const DIMENSIONES = [
+  { id: 'precision',    label: '¿Qué tan preciso te parece?' },
+  { id: 'identificacion', label: '¿Qué tanto te identificas?' },
+  { id: 'personalidad', label: '¿Qué tan personal se siente?' },
+  { id: 'utilidad',     label: '¿Qué tan útil te parece?' },
+  { id: 'sorpresa',     label: '¿Qué tan sorprendente fue?' },
+];
+
+function crearSliders() {
+  const container = document.getElementById('sliders-container');
+  container.innerHTML = '';
+  DIMENSIONES.forEach(dim => {
+    const grupo = document.createElement('div');
+    grupo.className = 'slider-group';
+    grupo.innerHTML = `
+      <div class="slider-header">
+        <span class="slider-label">${dim.label}</span>
+        <span class="slider-value" id="val-${dim.id}">5</span>
+      </div>
+      <div class="slider-track">
+        <div class="slider-fill" id="fill-${dim.id}" style="width:50%"></div>
+        <input type="range" min="0" max="10" value="5" id="rng-${dim.id}" />
+      </div>
+    `;
+    container.appendChild(grupo);
+
+    const rng = container.querySelector(`#rng-${dim.id}`);
+    const val = container.querySelector(`#val-${dim.id}`);
+    const fill = container.querySelector(`#fill-${dim.id}`);
+    rng.addEventListener('input', () => {
+      val.textContent = rng.value;
+      fill.style.width = (rng.value / 10 * 100) + '%';
+    });
+  });
+}
+
+function leerSliders() {
+  return DIMENSIONES.map(dim => parseInt(document.getElementById(`rng-${dim.id}`).value));
+}
+
+/* ============================================================
+   GRÁFICA RADAR (Chart.js)
+============================================================ */
+let radarChart = null;
+
+function crearRadar(valores) {
+  const ctx = document.getElementById('radar-chart').getContext('2d');
+  if (radarChart) radarChart.destroy();
+
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['Precisión', 'Identificación', 'Personalización', 'Utilidad', 'Sorpresa'],
+      datasets: [{
+        label: 'Tu evaluación',
+        data: valores,
+        fill: true,
+        backgroundColor: 'rgba(155,114,245,0.2)',
+        borderColor: '#9b72f5',
+        pointBackgroundColor: '#e8c97a',
+        pointBorderColor: '#e8c97a',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: '#9b72f5',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      scales: {
+        r: {
+          min: 0, max: 10,
+          ticks: {
+            stepSize: 2,
+            color: '#8a82a8',
+            backdropColor: 'transparent',
+            font: { size: 10 }
+          },
+          grid: { color: 'rgba(255,255,255,0.08)' },
+          angleLines: { color: 'rgba(255,255,255,0.08)' },
+          pointLabels: {
+            color: '#c4a8ff',
+            font: { family: "'Lato', sans-serif", size: 12 }
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: { color: '#ede8ff', font: { family: "'Cinzel', serif" } }
+        }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   ESTRELLAS DE FONDO
+============================================================ */
+function generarEstrellas(n) {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.2 + 0.5;
+    s.style.cssText = `
+      width: ${size}px; height: ${size}px;
+      left: ${Math.random()*100}%;
+      top: ${Math.random()*100}%;
+      --dur: ${(Math.random()*3+2).toFixed(1)}s;
+      --delay: ${(Math.random()*4).toFixed(1)}s;
+    `;
+    container.appendChild(s);
+  }
+}
+
+/* ============================================================
+   NAVEGACIÓN ENTRE PANTALLAS
+============================================================ */
+function mostrarPantalla(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  const pantalla = document.getElementById(id);
+  pantalla.style.display = 'block';
+  // Forzar reflow para animar
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      pantalla.classList.add('active');
+    });
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ============================================================
+   LOADER DE TRANSICIÓN
+============================================================ */
+function mostrarLoader(ms, callback) {
+  const loader = document.getElementById('loader');
+  loader.classList.remove('hidden');
+  loader.style.opacity = '1';
+  loader.style.pointerEvents = 'all';
+  setTimeout(() => {
+    loader.style.opacity = '0';
+    loader.style.pointerEvents = 'none';
+    setTimeout(() => {
+      loader.classList.add('hidden');
+      if (callback) callback();
+    }, 600);
+  }, ms);
+}
+
+/* ============================================================
+   LÓGICA PRINCIPAL
+============================================================ */
+
+// Estado global
+const estado = {
+  nombre: '',
+  fechaStr: '',
+  signos: {}
+};
+
+/** Pantalla 1 → 2: generar perfil */
+function generarPerfil() {
+  const nombre = document.getElementById('inp-nombre').value.trim();
+  const fechaStr = document.getElementById('inp-fecha').value;
+  const errorEl = document.getElementById('error-fecha');
+
+  // Validación
+  if (!fechaStr) {
+    errorEl.style.display = 'block';
+    document.getElementById('inp-fecha').focus();
+    return;
+  }
+  errorEl.style.display = 'none';
+
+  // Parsear fecha
+  const [anio, mesRaw, diaRaw] = fechaStr.split('-').map(Number);
+  const mes = mesRaw;
+  const dia = diaRaw;
+  const fechaObj = new Date(anio, mesRaw - 1, diaRaw);
+
+  // Calcular signos
+  const occidental = calcZodiacoOccidental(mes, dia);
+  const chino      = calcZodiacoChino(anio);
+  const celta      = calcZodiacoCelta(mes, dia);
+  const maya       = calcZodiacoMaya(fechaObj);
+
+  estado.nombre   = nombre;
+  estado.fechaStr = fechaStr;
+  estado.signos   = { occidental, chino, celta, maya };
+
+  // Formatear fecha para mostrar
+  const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
+  const fechaFormateada = fechaObj.toLocaleDateString('es-MX', opciones);
+
+  // Llenar pantalla 2
+  document.getElementById('res-nombre').textContent = nombre || 'viajero/a';
+  document.getElementById('res-fecha').textContent  = fechaFormateada;
+
+  // Grid de signos
+  const grid = document.getElementById('signs-grid');
+  grid.innerHTML = '';
+
+  const sistemasData = [
+    {
+      sistema: 'Zodiaco occidental',
+      signo: occidental.nombre,
+      detalle: 'Signo solar',
+      emoji: occidental.emoji,
+      img: occidental.imagen,
+      delay: 1
+    },
+    {
+      sistema: 'Horóscopo chino',
+      signo: chino.nombre,
+      detalle: `Año ${anio}`,
+      emoji: chino.emoji,
+      img: chino.imagen,
+      delay: 2
+    },
+    {
+      sistema: 'Zodiaco celta',
+      signo: celta.nombre,
+      detalle: 'Árbol sagrado',
+      emoji: celta.emoji,
+      img: `imagenes/celta/${celta.nombre.toLowerCase()}.png`,
+      delay: 3
+    },
+    {
+      sistema: 'Nahual maya',
+      signo: maya.nombre,
+      detalle: maya.desc,
+      emoji: maya.emoji,
+      img: `imagenes/maya/${maya.nombre.toLowerCase()}.png`,
+      delay: 4
+    }
+  ];
+
+  sistemasData.forEach(d => {
+    const card = document.createElement('div');
+    card.className = `sign-card anim-delay-${d.delay}`;
+    card.style.animation = 'fadeUp 0.5s ease both';
+    card.innerHTML = `
+      <div class="sign-img-wrap">
+        <img src="${d.img}" alt="${d.signo}"
+             onerror="this.parentElement.innerHTML='<span>${d.emoji}</span>'" />
+      </div>
+      <div class="system-label">${d.sistema}</div>
+      <div class="sign-name">${d.signo}</div>
+      <div class="sign-detail">${d.detalle}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Horóscopo (texto Forer)
+  document.getElementById('horoscope-box').innerHTML = generarHoroscopo(nombre, estado.signos);
+
+  // Mostrar con loader
+  mostrarLoader(1200, () => mostrarPantalla('screen-result'));
+}
+
+/** Pantalla 2 → 3: evaluar */
+function irAEvaluar() {
+  crearSliders();
+  mostrarPantalla('screen-eval');
+}
+
+/** Pantalla 3 → 4: ver resultado */
+function verResultado() {
+  const valores = leerSliders();
+  const promedio = (valores.reduce((a,b)=>a+b,0) / valores.length).toFixed(1);
+
+  mostrarLoader(800, () => {
+    mostrarPantalla('screen-grafica');
+    // Esperar que el canvas sea visible antes de crear chart
+    setTimeout(() => {
+      crearRadar(valores);
+      const promEl = document.getElementById('grafica-promedio');
+      promEl.textContent = `Puntuación promedio: ${promedio} / 10`;
+    }, 100);
+  });
+}
+
+/** Reiniciar */
+function reiniciar() {
+  document.getElementById('inp-nombre').value = '';
+  document.getElementById('inp-fecha').value  = '';
+  mostrarPantalla('screen-form');
+}
+
+/* ============================================================
+   EVENTOS
+============================================================ */
+document.getElementById('btn-generar').addEventListener('click', generarPerfil);
+document.getElementById('btn-evaluar').addEventListener('click', irAEvaluar);
+document.getElementById('btn-ver-resultado').addEventListener('click', verResultado);
+document.getElementById('btn-reiniciar').addEventListener('click', reiniciar);
+
+// Enter en fecha
+document.getElementById('inp-fecha').addEventListener('keydown', e => {
+  if (e.key === 'Enter') generarPerfil();
+});
+
+/* ============================================================
+   INICIALIZACIÓN
+============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  generarEstrellas(120);
+
+  // Ocultar loader inicial
+  mostrarLoader(600, () => {
+    // Pantalla inicial ya activa
+  });
+});
+</script>
+
+<!-- FOOTER DE AUTORÍA -->
+<footer class="autoria-footer">
+  <div class="autoria-label">Herramienta creada por</div>
+  <div class="autoria-nombre">Francisco Montes</div>
+  <div class="autoria-deco">· · · ✦ · · ·</div>
+</footer>
+
+</body>
+</html>
