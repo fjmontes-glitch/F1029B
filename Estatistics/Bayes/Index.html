@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Falacia de la Tasa Base</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+:root {
+  --fondo: #0f2f2f;
+  --card: #1f3a3a;
+  --texto: #e5e7eb;
+  --azul: #60a5fa;
+  --verde: #4ade80;
+  --rojo: #f87171;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #0f2f2f, #092222);
+  color: var(--texto);
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+.app { max-width: 700px; width: 100%; }
+
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.pantalla { display: none; }
+.visible { display: block; }
+
+h1, h2 { margin-bottom: 10px; }
+
+input[type=range] { width: 100%; }
+
+button {
+  margin-top: 15px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--azul);
+  color: white;
+  cursor: pointer;
+}
+
+.resultado {
+  font-size: 48px;
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(25, 1fr);
+  gap: 2px;
+}
+
+.cell { width: 12px; height: 12px; }
+
+.vp { background: var(--verde); }
+.fp { background: #facc15; }
+.vn { background: #64748b; }
+.fn { background: var(--rojo); }
+
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<!-- P1 POSITIVO -->
+<div class="pantalla visible" id="p1">
+<div class="card">
+<h2>Resultado positivo</h2>
+<p>Una enfermedad afecta al 1% de la población. El test es 90% preciso.</p>
+
+<p>Si das positivo, ¿qué probabilidad crees que tienes de estar enfermo?</p>
+
+<input type="range" id="s1" min="0" max="100" value="50">
+<p id="v1">50%</p>
+
+<button onclick="ir(2)">Continuar</button>
+</div>
+</div>
+
+<!-- P2 NEGATIVO -->
+<div class="pantalla" id="p2">
+<div class="card">
+<h2>Resultado negativo</h2>
+
+<p>Si das negativo, ¿qué probabilidad crees que tienes de estar sano?</p>
+
+<input type="range" id="s2" min="0" max="100" value="90">
+<p id="v2">90%</p>
+
+<button onclick="ir(3)">Continuar</button>
+</div>
+
+</div>
+
+<!-- P3 MODELO -->
+<div class="pantalla" id="p3">
+<div class="card">
+<h2>1000 personas</h2>
+<p>Visualización del modelo:<br>
+
+Las primeras 10 personas están enfermas<br>
+</p>
+
+<p style="font-size:13px;">
+Verde = enfermos con diagnóstico positivo<br>
+Rojo = enfermos con diagnóstico negativo (falsos negativos)<br>
+Amarillo = sanos con diagnóstico positivo (falsos positivos)<br>
+Gris = Sanos con diagnostico Negativos<br>
+<br>
+
+</p>
+
+<div class="grid" id="grid"></div>
+
+<p style="font-size:13px;">
+
+<br>
+Quiere decir que si tuviste diagnóstico positivo, puede ser Verde o Amarillo<br>
+Prob de star enfermo = 9 verdes / (9verdes + 99 amarillos) <br>
+<br>
+Y si Saliste negativo, puede ser Rojo o Gris<br>
+Prob de estar sano = 891 Gris / (1 Rojos + 891 Gris)<br>
+
+</p>
+
+<button onclick="ir(4)">Continuar</button>
+</div>
+</div>
+
+<!-- P4 RESULTADOS -->
+<div class="pantalla" id="p4">
+<div class="card">
+<h2>Resultados reales</h2>
+
+<p>Si das positivo:</p>
+<div class="resultado" style="color:var(--rojo)">8.3%</div>
+
+<p>Si das negativo:</p>
+<div class="resultado" style="color:var(--verde)">99.9%</div>
+
+<button onclick="ir(5)">Comparar</button>
+</div>
+</div>
+
+<!-- P5 COMPARACIÓN -->
+<div class="pantalla" id="p5">
+<div class="card">
+<h2>Comparación</h2>
+
+<canvas id="chart"></canvas>
+
+<button onclick="ir(6)">Continuar</button>
+</div>
+</div>
+
+<!-- P6 REFLEXIÓN -->
+<div class="pantalla" id="p6">
+<div class="card">
+<h2>Reflexión</h2>
+
+<ul>
+<li>¿Por qué tu intuición fue diferente?</li>
+<li>¿Ignoraste qué tan rara era la enfermedad?</li>
+<li>¿Dónde tomas decisiones similares en tu vida?</li>
+</ul>
+
+<button onclick="ir(1)">Reiniciar</button>
+<div style="text-align: right; margin-top: 20px; font-size: 0.8em; color: #888; font-style: italic; padding-right: 5px;">
+        Desarrollado por Francisco Montes
+    </div>
+</div>
+</div>
+ 
+</div>
+
+<script>
+let estPos = 50;
+let estNeg = 90;
+
+s1.oninput = e => {
+  estPos = e.target.value;
+  v1.innerText = estPos + "%";
+};
+
+s2.oninput = e => {
+  estNeg = e.target.value;
+  v2.innerText = estNeg + "%";
+};
+
+function ir(n){
+  document.querySelectorAll(".pantalla").forEach(p=>p.classList.remove("visible"));
+  document.getElementById("p"+n).classList.add("visible");
+
+  if(n===3) generarGrid();
+  if(n===5) grafica();
+}
+
+
+
+
+
+
+function generarGrid(){
+
+  let g = document.getElementById("grid");
+
+  if(g.children.length > 0) return;
+
+  for(let i=0;i<9;i++) g.innerHTML += '<div class="cell vp"></div>';
+  for(let i=0;i<1;i++) g.innerHTML += '<div class="cell fn"></div>';
+  for(let i=0;i<99;i++) g.innerHTML += '<div class="cell fp"></div>';
+  for(let i=0;i<891;i++) g.innerHTML += '<div class="cell vn"></div>';
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function grafica(){
+  new Chart(document.getElementById("chart"),{
+    type:"bar",
+    data:{
+      labels:[
+        "Tu estimación (positivo)",
+        "Real (positivo)",
+        "Tu estimación (negativo)",
+        "Real (negativo)"
+      ],
+      datasets:[{
+        data:[estPos,8.3,estNeg,99.9],
+        backgroundColor:["#60a5fa","#4ade80","#60a5fa","#4ade80"]
+      }]
+    }
+  });
+}
+</script>
+
+</body>
+</html>
