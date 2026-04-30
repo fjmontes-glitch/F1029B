@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>F1029 - Explorador de Correlaciones</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --tec-blue: #0033a0; --tec-light: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--tec-light); padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        header { border-bottom: 3px solid var(--tec-blue); margin-bottom: 20px; text-align: center; }
+        
+        .selection-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .var-box { padding: 15px; border: 2px solid #eee; border-radius: 10px; background: #fff; }
+        
+        select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 14px; background: #fff; }
+        
+        .r-display { text-align: center; padding: 20px; background: #2c3e50; color: white; border-radius: 10px; margin: 20px 0; }
+        .r-value { font-size: 40px; font-weight: bold; }
+        
+        .chart-area { height: 450px; margin-bottom: 20px; background: #fff; border: 1px solid #eee; padding: 10px; }
+        
+        .task-box { background: #e3f2fd; border-left: 5px solid var(--tec-blue); padding: 20px; border-radius: 5px; margin-bottom: 10px; }
+        .instruction-step { margin-bottom: 10px; font-weight: bold; color: var(--tec-blue); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>F1029: Minería de Correlaciones</h1>
+        <p>Encuentra una pareja con <b>|r| > 0.85</b> y descubre la variable oculta.</p>
+    </header>
+
+    <div class="selection-panel">
+        <div class="var-box">
+            <div class="instruction-step">1. Variable X:</div>
+            <select id="sel1" onchange="processData()"></select>
+        </div>
+        <div class="var-box">
+            <div class="instruction-step">2. Variable Y:</div>
+            <select id="sel2" onchange="processData()"></select>
+        </div>
+    </div>
+
+    <div class="r-display">
+        Coeficiente de Correlación de Pearson (r)
+        <div class="r-value" id="rLabel">0.00</div>
+        <div id="rInterpretation" style="font-size: 0.9em; margin-top: 5px; opacity: 0.8;"></div>
+    </div>
+
+    <div class="chart-area">
+        <canvas id="mainChart"></canvas>
+    </div>
+
+    <div class="task-box">
+        <h3>Misión de Análisis</h3>
+        <p>Busca una correlación fuerte, captura la pantalla y explica por qué la conclusión obvia es probablemente una <b>conclusión tonta</b>.</p>
+    </div>
+
+    <div style="text-align: right; margin-top: 20px; font-size: 0.8em; color: #888; font-style: italic; padding-right: 5px;">
+        Desarrollado por Francisco Montes
+    </div>
+</div>
+
+<script>
+    const dataset = {
+        // Familia A: Tiempo/Progreso
+        "Temperatura Global": [14.1, 14.4, 14.7, 15.0, 15.3, 15.6, 16.0],
+        "Venta de Smartphones": [10, 50, 150, 300, 450, 550, 620],
+        "Consumo de Datos Internet": [1, 15, 80, 200, 500, 1200, 3000],
+        "Emisiones CO2": [25, 27, 30, 33, 36, 39, 43],
+        "Gasto en Streaming": [0, 2, 10, 35, 80, 150, 240],
+        
+        // Familia B: Estacionalidad
+        "Consumo de Helados": [10, 15, 28, 45, 55, 30, 12],
+        "Incidentes en Piscinas": [5, 8, 14, 22, 28, 16, 6],
+        "Uso de Aire Acondicionado": [12, 18, 30, 50, 65, 35, 15],
+        "Venta de Bloqueador Solar": [8, 12, 25, 40, 50, 28, 10],
+
+        // Familia C: Decadencia
+        "Número de Piratas": [4000, 2500, 1200, 400, 100, 30, 5],
+        "Venta de Periódicos Físicos": [500, 420, 310, 200, 110, 45, 10],
+        "Cines de Barrio Abiertos": [1000, 950, 800, 650, 450, 200, 80],
+        "Población Rural": [45, 42, 38, 33, 28, 22, 15],
+
+        // Familia D: Economía/Bienestar
+        "Precio del Oro": [300, 600, 1100, 1600, 1200, 1800, 2400],
+        "Gasto en Mascotas": [20, 32, 45, 58, 75, 95, 120],
+        "Consumo de Café Gourmet": [5, 12, 22, 35, 50, 70, 95],
+        "Títulos de Ingeniería": [100, 120, 155, 190, 230, 280, 340],
+
+        // Familia E: Salud/Hábitos
+        "Consumo de Vegetales": [30, 35, 42, 50, 60, 72, 85],
+        "Esperanza de Vida": [65, 66.5, 68, 69.5, 71, 72.5, 74],
+        "Gimnasios Inaugurados": [10, 15, 25, 40, 65, 100, 150]
+    };
+
+    const labels = ["2000", "2004", "2008", "2012", "2016", "2020", "2024"];
+    let myChart;
+
+    const sel1 = document.getElementById('sel1');
+    const sel2 = document.getElementById('sel2');
+    const keys = Object.keys(dataset);
+
+    // Poblar selectores
+    keys.forEach((v) => {
+        sel1.add(new Option(v, v));
+        sel2.add(new Option(v, v));
+    });
+
+    function calculatePearson(x, y) {
+        const n = x.length;
+        const sumX = x.reduce((a, b) => a + b, 0);
+        const sumY = y.reduce((a, b) => a + b, 0);
+        const sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+        const sumX2 = x.reduce((a, b) => a + b * b, 0);
+        const sumY2 = y.reduce((a, b) => a + b * b, 0);
+        const num = (n * sumXY) - (sumX * sumY);
+        const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+        return den === 0 ? 0 : num / den;
+    }
+
+    function processData() {
+        const v1 = sel1.value; const v2 = sel2.value;
+        const d1 = dataset[v1]; const d2 = dataset[v2];
+        const r = calculatePearson(d1, d2);
+        
+        const rLabel = document.getElementById('rLabel');
+        rLabel.innerText = r.toFixed(4);
+        
+        if (Math.abs(r) > 0.85) {
+            rLabel.style.color = "#2ecc71";
+            document.getElementById('rInterpretation').innerText = "🔥 ¡Correlación Encontrada!";
+        } else if (Math.abs(r) > 0.6) {
+            rLabel.style.color = "#f1c40f";
+            document.getElementById('rInterpretation').innerText = "📈 Relación Moderada";
+        } else {
+            rLabel.style.color = "#e74c3c";
+            document.getElementById('rInterpretation').innerText = "❓ Buscando relación...";
+        }
+
+        if (myChart) myChart.destroy();
+        myChart = new Chart(document.getElementById('mainChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: v1, data: d1, borderColor: '#0033a0', yAxisID: 'y', tension: 0.3, pointRadius: 5 },
+                    { label: v2, data: d2, borderColor: '#e74c3c', yAxisID: 'y1', tension: 0.3, pointRadius: 5 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    y: { type: 'linear', position: 'left', title: {display: true, text: v1} },
+                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: {display: true, text: v2} }
+                }
+            }
+        });
+    }
+
+    // Inicialización aleatoria
+    window.onload = function() {
+        const r1 = Math.floor(Math.random() * keys.length);
+        let r2 = Math.floor(Math.random() * keys.length);
+        while(r1 === r2) r2 = Math.floor(Math.random() * keys.length);
+
+        sel1.selectedIndex = r1;
+        sel2.selectedIndex = r2;
+        processData();
+    };
+</script>
+</body>
+</html>
