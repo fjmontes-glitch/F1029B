@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Monty Hall - El Juego</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  color: white;
+  text-align: center;
+}
+
+h1{margin-top:20px;}
+
+.container{
+  max-width: 800px;
+  margin: auto;
+}
+
+.host{
+  width:120px;
+  border-radius:50%;
+  margin:10px;
+}
+
+.puertas{
+  display:flex;
+  justify-content:center;
+  gap:20px;
+  margin:30px 0;
+}
+
+.puerta{
+  width:100px;
+  height:150px;
+  background:#5c3d2e;
+  border-radius:10px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:30px;
+  transition:0.3s;
+}
+
+.puerta:hover{
+  transform:scale(1.1);
+}
+
+.abierta{
+  background:#999;
+}
+
+.boton{
+  padding:10px 20px;
+  margin:10px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:16px;
+}
+
+.cambiar{background:#2ecc71;}
+.quedarse{background:#e67e22;}
+
+.stats{
+  margin-top:20px;
+  background:rgba(255,255,255,0.1);
+  padding:15px;
+  border-radius:10px;
+}
+
+.oculto{display:none;}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🎯 El Juego de las 3 Puertas</h1>
+
+<img src="cara1.png" id="host" class="host">
+
+<p id="mensaje">Elige una puerta</p>
+
+<div class="puertas">
+  <div class="puerta" onclick="elegir(0)">1</div>
+  <div class="puerta" onclick="elegir(1)">2</div>
+  <div class="puerta" onclick="elegir(2)">3</div>
+</div>
+
+<div id="decision" class="oculto">
+  <p>¿Quieres cambiar de puerta?</p>
+  <button class="boton cambiar" onclick="cambiar()">Cambiar</button>
+  <button class="boton quedarse" onclick="quedarse()">Quedarme</button>
+</div>
+
+<div class="stats">
+  <p>Rondas: <span id="rondas">0</span></p>
+  <p>Ganaste cambiando: <span id="ganarCambio">0</span></p>
+  <p>Ganaste quedándote: <span id="ganarQuedarse">0</span></p>
+</div>
+
+<div id="final" class="oculto">
+  <h2>Resultados</h2>
+  <p id="resumen"></p>
+</div>
+
+</div>
+
+<script>
+
+let eleccion;
+let coche;
+let abierta;
+let rondas=0;
+let ganarCambio=0;
+let ganarQuedarse=0;
+
+function elegir(p){
+  eleccion=p;
+  coche=Math.floor(Math.random()*3);
+
+  // abrir puerta con cabra
+  do{
+    abierta=Math.floor(Math.random()*3);
+  }while(abierta===eleccion || abierta===coche);
+
+  document.querySelectorAll(".puerta")[abierta].classList.add("abierta");
+  document.getElementById("mensaje").innerText="Abrí una puerta con cabra...";
+  document.getElementById("decision").classList.remove("oculto");
+
+  document.getElementById("host").src="cara3.png";
+}
+
+function cambiar(){
+  eleccion=[0,1,2].find(p=>p!==eleccion && p!==abierta);
+  resolver(true);
+}
+
+function quedarse(){
+  resolver(false);
+}
+
+function resolver(cambio){
+
+  let gano = (eleccion===coche);
+
+  if(gano && cambio) ganarCambio++;
+  if(gano && !cambio) ganarQuedarse++;
+
+  rondas++;
+
+  document.getElementById("rondas").innerText=rondas;
+  document.getElementById("ganarCambio").innerText=ganarCambio;
+  document.getElementById("ganarQuedarse").innerText=ganarQuedarse;
+
+  document.querySelectorAll(".puerta")[coche].innerText="🚗";
+  
+  setTimeout(reset,1500);
+
+  if(rondas>=10){
+    mostrarFinal();
+  }
+}
+
+function reset(){
+  document.querySelectorAll(".puerta").forEach(p=>{
+    p.classList.remove("abierta");
+    p.innerText=p.dataset.num || p.innerText;
+  });
+  document.getElementById("decision").classList.add("oculto");
+  document.getElementById("mensaje").innerText="Elige otra puerta";
+  document.getElementById("host").src="cara1.png";
+}
+
+function mostrarFinal(){
+
+  document.getElementById("final").classList.remove("oculto");
+
+  let totalCambio = ganarCambio;
+  let totalQuedarse = ganarQuedarse;
+
+  document.getElementById("resumen").innerText =
+  `Cambiar: ${totalCambio} victorias | Quedarse: ${totalQuedarse} victorias`;
+
+}
+
+</script>
+
+</body>
+</html>
